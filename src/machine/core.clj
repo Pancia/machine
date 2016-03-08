@@ -13,27 +13,28 @@
 (defrecord Machine [value steps state tapes history accept-states]
   IRobot
   (log [auto f|msg]
-    (update auto :history conj
-            (cond
-              (= f|msg ::tapes) (->> auto :tapes (mapv first))
-              (fn? f|msg)         (f|msg auto)
-              :else               f|msg)))
+    (update auto :history
+            #(if-let [msg (cond
+                            (= f|msg ::tapes) (if (every? seq (:tapes auto))
+                                                (->> auto :tapes (mapv first)))
+                            (fn? f|msg)       (f|msg auto)
+                            :else             f|msg)]
+              (conj % msg) %)))
   (transition [auto ?f]
     (-> auto (update-in [:state] (?f->fn ?f))
         (.log #(str '-> (name (:state %))))))
   (advance [auto which]
     (cond-> auto
-      true            (.log ::tapes)
       (= which :all)  (update-in [:tapes] #(mapv next %))
       ;TODO: multiple which eg: [0 2 3] out of [0 1 2 3]
-      (number? which) (update-in [:tapes which] next)))
+      (number? which) (update-in [:tapes which] next)
+
+      true (.log ::tapes)))
   (accept [auto]
     (-> auto
-        (.log ::tapes)
         (transition :accepted)))
   (reject [auto msg]
     (-> auto
-        (.log ::tapes)
         (assoc :rejected/msg msg)
         (transition :rejected)))
   (value [auto ?f]
@@ -84,6 +85,7 @@
           (exec-step [{:keys [steps state] :as auto}]
             ((get steps state) auto))]
     (->> (assoc auto :tapes (vec tapes))
+      (#(.log % ::tapes))
       (iterate (fn [{:as auto :keys [tapes]}]
                  (if (some empty? tapes)
                    (finish auto)
