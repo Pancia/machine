@@ -1,4 +1,4 @@
-(defproject machine "1.0.0"
+(defproject machine "1.0.1"
   :description "Library for reading multiple input tapes with a concept of states borrowed from Finite State Machines."
   :url "https://github.com/Pancia/machine"
   :license {:name "MIT"
